@@ -55,14 +55,21 @@
           <div class="col-sm">
           </div>
           <div class="col-sm">
-            <p class="text-center">
-                {% if short_link  %}
+              {% if short_link  %}
+                <p class="text-center">
                     <h5 class="text-center">
                         Ваша новая ссылка готова:
-                        <a>{{ short_link }}</a>
+                        <a class="text-center">{{ short_link }}</a>
                     </h5>
+                </p>
+              {% endif %}
+              {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                  {% for message in messages %}
+                    {{ message }}
+                  {% endfor %}
                 {% endif %}
-            </p>
+              {% endwith %}
           </div>
           <div class="col-sm">
           </div>
