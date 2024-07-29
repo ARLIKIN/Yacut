@@ -3,13 +3,13 @@ from wtforms import StringField, SubmitField, URLField
 from wtforms.validators import DataRequired, Length
 
 
-class OpinionForm(FlaskForm):
-    source = URLField(
+class UrlForm(FlaskForm):
+    full_url = URLField(
         'Длинная ссылка',
         validators=[DataRequired(message='Обязательное поле')]
     )
-    title = StringField(
+    short_url = StringField(
         'Ваш вариант короткой ссылки',
-        validators=[Length(1, 16)]
+        validators=[Length(0, 16)]
     )
     submit = SubmitField('Создать')
