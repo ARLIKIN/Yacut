@@ -12,8 +12,3 @@ class URLMap(db.Model):
             full_url=self.full_url,
             short_url=self.short_url,
         )
-
-    def from_dict(self, data):
-        for field in ['full_url', 'short_url']:
-            if field in data:
-                setattr(self, field, data[field])
