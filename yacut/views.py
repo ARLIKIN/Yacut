@@ -43,3 +43,11 @@ def index_view():
             short_link=f'{request.url_root}{url_map.short_url}'
         )
     return render_template('general.html', form=form)
+
+
+@app.route('/<short_url>')
+def short_url_view(short_url):
+    url_map = URLMap.query.filter_by(short_url=short_url).first()
+    if url_map is None:
+        return redirect(url_for('index_view'))
+    return redirect(url_map.full_url)
