@@ -1,8 +1,9 @@
 import random
 import string
 
-from flask import flash, redirect, render_template, url_for, request
+from flask import flash, redirect, render_template, url_for
 
+from settings import Config
 from . import app, db
 from .forms import UrlForm
 from .models import URLMap
@@ -11,43 +12,56 @@ from .models import URLMap
 def generate_random_link(length=6):
     characters = string.ascii_letters + string.digits
     random_link = ''.join(random.choice(characters) for _ in range(length))
-    if check_short_url(random_link):
+    if check_duplicate(random_link):
         random_link = generate_random_link()
     return random_link
 
 
-def check_short_url(short_url):
-    return URLMap.query.filter_by(short_url=short_url).first() is not None
+def check_duplicate(short):
+    return URLMap.query.filter_by(short=short).first() is not None
+
+
+def check_chars(short):
+    for char in short:
+        if char not in string.ascii_letters + string.digits:
+            return True
+    return False
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index_view():
     form = UrlForm()
     if form.validate_on_submit():
-        if form.short_url.data != '':
-            short_url = form.short_url.data
-            if check_short_url(short_url):
+        if form.custom_id.data != '' and form.custom_id.data is not None:
+            short = form.custom_id.data
+            if len(short) > Config.MAX_SHORT_LEN or check_chars(short):
+                flash('Указано недопустимое имя для короткой ссылки')
+                return render_template('general.html', form=form)
+            if check_duplicate(short):
                 flash('Предложенный вариант короткой ссылки уже существует.')
                 return render_template('general.html', form=form)
         else:
-            short_url = generate_random_link()
+            short = generate_random_link()
         url_map = URLMap(
-            full_url=form.full_url.data,
-            short_url=short_url
+            original=form.original_link.data,
+            short=short
         )
         db.session.add(url_map)
         db.session.commit()
         return render_template(
             'general.html',
             form=form,
-            short_link=f'{request.url_root}{url_map.short_url}'
+            link=url_for(
+                'short_view',
+                short=url_map.short,
+                _external=True
+            )
         )
     return render_template('general.html', form=form)
 
 
-@app.route('/<short_url>')
-def short_url_view(short_url):
-    url_map = URLMap.query.filter_by(short_url=short_url).first()
-    if url_map is None:
-        return redirect(url_for('index_view'))
-    return redirect(url_map.full_url)
+@app.route('/<short>')
+def short_view(short):
+    return redirect(
+        URLMap.query.filter_by(short=short).first_or_404().original
+    )
