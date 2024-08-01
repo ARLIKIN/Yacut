@@ -1,10 +1,13 @@
+import re
+from http import HTTPStatus
+
 from flask import jsonify, request, url_for
 
 from settings import Config
 from . import app, db
 from .error_handlers import InvalidAPIUsage
 from .models import URLMap
-from .views import check_duplicate, generate_random_link, check_chars
+from .views import check_duplicate, generate_random_link
 
 
 @app.route('/api/id/', methods=['POST'])
@@ -16,7 +19,10 @@ def add_url():
         raise InvalidAPIUsage('"url" является обязательным полем!')
     if 'custom_id' in data and data['custom_id'] != '':
         short = data['custom_id']
-        if len(short) > Config.MAX_SHORT_LEN or check_chars(short):
+        if (
+                len(short) > Config.MAX_SHORT_LEN
+                or not re.findall('^[a-zA-Z0-9]+$', short)
+        ):
             raise InvalidAPIUsage(
                 'Указано недопустимое имя для короткой ссылки'
             )
@@ -41,7 +47,7 @@ def add_url():
             short=url_map.short,
             _external=True
         )
-    }), 201
+    }), HTTPStatus.CREATED
 
 
 @app.route('/api/id/<short>/', methods=['GET'])
@@ -50,6 +56,6 @@ def get_url(short):
     if url_map is None:
         raise InvalidAPIUsage(
             'Указанный id не найден',
-            status_code=404
+            status_code=HTTPStatus.NOT_FOUND
         )
-    return jsonify({'url': url_map.original}), 200
+    return jsonify({'url': url_map.original}), HTTPStatus.OK

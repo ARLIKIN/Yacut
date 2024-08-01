@@ -1,4 +1,5 @@
 import random
+import re
 import string
 
 from flask import flash, redirect, render_template, url_for
@@ -21,43 +22,39 @@ def check_duplicate(short):
     return URLMap.query.filter_by(short=short).first() is not None
 
 
-def check_chars(short):
-    for char in short:
-        if char not in string.ascii_letters + string.digits:
-            return True
-    return False
-
-
 @app.route('/', methods=['GET', 'POST'])
 def index_view():
     form = UrlForm()
-    if form.validate_on_submit():
-        if form.custom_id.data != '' and form.custom_id.data is not None:
-            short = form.custom_id.data
-            if len(short) > Config.MAX_SHORT_LEN or check_chars(short):
-                flash('Указано недопустимое имя для короткой ссылки')
-                return render_template('general.html', form=form)
-            if check_duplicate(short):
-                flash('Предложенный вариант короткой ссылки уже существует.')
-                return render_template('general.html', form=form)
-        else:
-            short = generate_random_link()
-        url_map = URLMap(
-            original=form.original_link.data,
-            short=short
+    if not form.validate_on_submit():
+        return render_template('general.html', form=form)
+    if form.custom_id.data != '' and form.custom_id.data is not None:
+        short = form.custom_id.data
+        if (
+                len(short) > Config.MAX_SHORT_LEN
+                or not re.findall('^[a-zA-Z0-9]+$', short)
+        ):
+            flash('Указано недопустимое имя для короткой ссылки')
+            return render_template('general.html', form=form)
+        if check_duplicate(short):
+            flash('Предложенный вариант короткой ссылки уже существует.')
+            return render_template('general.html', form=form)
+    else:
+        short = generate_random_link()
+    url_map = URLMap(
+        original=form.original_link.data,
+        short=short
+    )
+    db.session.add(url_map)
+    db.session.commit()
+    return render_template(
+        'general.html',
+        form=form,
+        link=url_for(
+            'short_view',
+            short=url_map.short,
+            _external=True
         )
-        db.session.add(url_map)
-        db.session.commit()
-        return render_template(
-            'general.html',
-            form=form,
-            link=url_for(
-                'short_view',
-                short=url_map.short,
-                _external=True
-            )
-        )
-    return render_template('general.html', form=form)
+    )
 
 
 @app.route('/<short>')
